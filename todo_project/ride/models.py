@@ -1,21 +1,8 @@
 from django.db import models
 from user.models import User
 
-# Create your models here.
 
 class Ride(models.Model):
-    """
-    Ride model following the specified schema:
-    - id_ride: Primary key
-    - status: Ride status (e.g., 'en-route', 'pickup', 'dropoff')
-    - id_rider: Foreign key referencing User(id_user)
-    - id_driver: Foreign key referencing User(id_user)
-    - pickup_latitude: Latitude of pickup location
-    - pickup_longitude: Longitude of pickup location
-    - dropoff_latitude: Latitude of dropoff location
-    - dropoff_longitude: Longitude of dropoff location
-    - pickup_time: Pickup time
-    """
     
     STATUS_CHOICES = [
         ('en-route', 'En Route'),

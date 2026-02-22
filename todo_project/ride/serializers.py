@@ -3,7 +3,6 @@ from ride.models import Ride
 
 
 class RideSerializer(serializers.ModelSerializer):
-    """Basic serializer for Ride model."""
     
     class Meta:
         model = Ride

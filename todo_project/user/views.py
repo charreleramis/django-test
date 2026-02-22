@@ -33,7 +33,6 @@ class UserViewSet(viewsets.ModelViewSet):
         try:
             user = User.objects.get(email=email)
             
-            # Verify password
             if not user.check_password(password):
                 return Response({
                     'status': 'error',
@@ -47,7 +46,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 'message': 'Login successful',
                 'data': {
                     'user': serializer.data,
-                    'token': user.email  # Email is used as token for authentication
+                    'token': user.email
                 }
             }, status=status.HTTP_200_OK)
             
@@ -67,7 +66,6 @@ class UserViewSet(viewsets.ModelViewSet):
         phone_number = request.data.get('phone_number')
         role = request.data.get('role', 'user')
         
-        # Validate required fields
         if not email:
             return Response({
                 'status': 'error',
@@ -92,21 +90,18 @@ class UserViewSet(viewsets.ModelViewSet):
                 'message': 'Last name is required.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if user already exists
         if User.objects.filter(email=email).exists():
             return Response({
                 'status': 'error',
                 'message': 'User with this email already exists.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Validate password length
         if len(password) < 6:
             return Response({
                 'status': 'error',
                 'message': 'Password must be at least 6 characters long.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Create user with hashed password
         try:
             user = User.objects.create(
                 email=email,

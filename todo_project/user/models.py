@@ -1,20 +1,8 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 
-# Create your models here.
 
-class User(models.Model):
-    """
-    User model following the specified schema:
-    - id_user: Primary key
-    - role: User role ('admin' or other roles)
-    - first_name: User's first name
-    - last_name: User's last name
-    - email: User's email address
-    - phone_number: User's phone number
-    - password: User's hashed password
-    """
-    
+class User(models.Model):    
     ROLE_CHOICES = [
         ('admin', 'Admin'),
         ('user', 'User'),
@@ -28,18 +16,16 @@ class User(models.Model):
     last_name = models.CharField(max_length=100)
     email = models.CharField(max_length=255, unique=True)
     phone_number = models.CharField(max_length=20)
-    password = models.CharField(max_length=255)  # Store hashed password
+    password = models.CharField(max_length=255)
     
     def set_password(self, raw_password):
-        """Hash and set the password."""
         self.password = make_password(raw_password)
     
     def check_password(self, raw_password):
-        """Check if the provided password matches the stored hash."""
         return check_password(raw_password, self.password)
     
     class Meta:
-        db_table = 'user'  # Optional: specify table name
+        db_table = 'user'
         verbose_name = 'User'
         verbose_name_plural = 'Users'
     
@@ -48,5 +34,4 @@ class User(models.Model):
     
     @property
     def full_name(self):
-        """Return the full name of the user."""
         return f"{self.first_name} {self.last_name}"

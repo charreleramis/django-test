@@ -5,11 +5,6 @@ from user.permissions import IsAdminRole
 
 
 class RideEventViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for RideEvent model.
-    Provides CRUD operations: list, create, retrieve, update, delete
-    Only accessible by users with 'admin' role.
-    """
     queryset = RideEvent.objects.all()
     serializer_class = RideEventSerializer
     permission_classes = [IsAdminRole]
