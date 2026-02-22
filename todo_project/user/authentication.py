@@ -24,14 +24,14 @@ class CustomUserAuthentication(BaseAuthentication):
             # Decode Basic Auth credentials
             encoded_credentials = auth_header.split(' ')[1]
             decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
-            email, password_or_token = decoded_credentials.split(':', 1)
+            email, password = decoded_credentials.split(':', 1)
             
-            # Try to get user by email
+            # Try to get user by email and verify password
             try:
                 user = User.objects.get(email=email)
-                # For simplicity, we'll use email as the token
-                # In production, you should implement proper password hashing
-                # For now, we'll just check if user exists and has admin role
+                # Verify password
+                if not user.check_password(password):
+                    raise AuthenticationFailed('Invalid credentials')
                 return (user, None)
             except User.DoesNotExist:
                 raise AuthenticationFailed('Invalid credentials')

@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.hashers import make_password, check_password
 
 # Create your models here.
 
@@ -11,6 +12,7 @@ class User(models.Model):
     - last_name: User's last name
     - email: User's email address
     - phone_number: User's phone number
+    - password: User's hashed password
     """
     
     ROLE_CHOICES = [
@@ -26,6 +28,15 @@ class User(models.Model):
     last_name = models.CharField(max_length=100)
     email = models.CharField(max_length=255, unique=True)
     phone_number = models.CharField(max_length=20)
+    password = models.CharField(max_length=255)  # Store hashed password
+    
+    def set_password(self, raw_password):
+        """Hash and set the password."""
+        self.password = make_password(raw_password)
+    
+    def check_password(self, raw_password):
+        """Check if the provided password matches the stored hash."""
+        return check_password(raw_password, self.password)
     
     class Meta:
         db_table = 'user'  # Optional: specify table name
