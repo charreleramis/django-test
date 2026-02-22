@@ -5,10 +5,11 @@ from rest_framework.permissions import AllowAny
 from user.models import User
 from user.serializers import UserSerializer
 from user.permissions import IsAdminRole
+from user.services import UserService
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    queryset = UserService.get_base_queryset()
     serializer_class = UserSerializer
     lookup_field = 'id_user'
     permission_classes=[AllowAny]
@@ -30,31 +31,22 @@ class UserViewSet(viewsets.ModelViewSet):
                 'message': 'Password is required.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        try:
-            user = User.objects.get(email=email)
-            
-            if not user.check_password(password):
-                return Response({
-                    'status': 'error',
-                    'message': 'Invalid email or password.'
-                }, status=status.HTTP_401_UNAUTHORIZED)
-            
-            serializer = UserSerializer(user)
-            
-            return Response({
-                'status': 'success',
-                'message': 'Login successful',
-                'data': {
-                    'user': serializer.data,
-                    'token': user.email
-                }
-            }, status=status.HTTP_200_OK)
-            
-        except User.DoesNotExist:
+        user = UserService.get_user_by_email(email)
+        
+        if not user or not user.check_password(password):
             return Response({
                 'status': 'error',
                 'message': 'Invalid email or password.'
             }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        return Response({
+            'status': 'success',
+            'message': 'Login successful',
+            'data': {
+                'user': user.serialized,
+                'token': user.serialized.email
+            }
+        }, status=status.HTTP_200_OK)
     
 
     @action(detail=False, methods=['POST'], permission_classes=[AllowAny])
@@ -90,7 +82,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 'message': 'Last name is required.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        if User.objects.filter(email=email).exists():
+        if UserService.check_email_exists(email):
             return Response({
                 'status': 'error',
                 'message': 'User with this email already exists.'
@@ -103,22 +95,19 @@ class UserViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            user = User.objects.create(
+            user = UserService.create_user(
                 email=email,
+                password=password,
                 first_name=first_name,
                 last_name=last_name,
                 phone_number=phone_number or '',
                 role=role
             )
-            user.set_password(password)
-            user.save()
-            
-            serializer = UserSerializer(user)
             
             return Response({
                 'status': 'success',
                 'message': 'User created successfully.',
-                'data': serializer.data
+                'data': user.serialized
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:

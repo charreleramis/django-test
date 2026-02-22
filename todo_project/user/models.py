@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 
-
 class User(models.Model):    
     ROLE_CHOICES = [
         ('admin', 'Admin'),
@@ -24,6 +23,11 @@ class User(models.Model):
     def check_password(self, raw_password):
         return check_password(raw_password, self.password)
     
+    def to_serializer_data(self):
+        from user.serializers import UserSerializer
+        serializer = UserSerializer(self)
+        return serializer.data
+    
     class Meta:
         db_table = 'user'
         verbose_name = 'User'
@@ -35,3 +39,7 @@ class User(models.Model):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+    
+    @property
+    def serialized(self):
+        return self.to_serializer_data()

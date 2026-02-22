@@ -22,6 +22,11 @@ class Ride(models.Model):
     dropoff_longitude = models.FloatField()
     pickup_time = models.DateTimeField()
     
+    def to_serializer_data(self):
+        from ride.serializers import RideSerializer
+        serializer = RideSerializer(self)
+        return serializer.data
+    
     class Meta:
         db_table = 'ride'
         verbose_name = 'Ride'
@@ -29,3 +34,7 @@ class Ride(models.Model):
     
     def __str__(self):
         return f"Ride #{self.id_ride} - {self.status} (Rider: {self.id_rider}, Driver: {self.id_driver})"
+    
+    @property
+    def serialized(self):
+        return self.to_serializer_data()
