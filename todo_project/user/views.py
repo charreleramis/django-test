@@ -6,13 +6,36 @@ from user.models import User
 from user.serializers import UserSerializer
 from user.permissions import IsAdminRole
 from user.services import UserService
+from user.token_utils import TokenUtils
 
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = UserService.get_base_queryset()
     serializer_class = UserSerializer
     lookup_field = 'id_user'
-    permission_classes=[AllowAny]
+    permission_classes = [IsAdminRole]
+    
+    def list(self, request, *args, **kwargs):
+        try:
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 20))
+        except (ValueError, TypeError):
+            page = 1
+            page_size = 20
+        
+        result = UserService.get_all_users(page=page, page_size=page_size)
+        
+        data = [user.serialized for user in result['results']]
+        
+        return Response({
+            'count': result['count'],
+            'page': result['page'],
+            'page_size': result['page_size'],
+            'total_pages': result['total_pages'],
+            'next': f"?page={page + 1}&page_size={page_size}" if page < result['total_pages'] else None,
+            'previous': f"?page={page - 1}&page_size={page_size}" if page > 1 else None,
+            'results': data
+        })
 
     @action(detail=False, methods=['POST'], permission_classes=[AllowAny])
     def signin(self, request):
@@ -39,14 +62,27 @@ class UserViewSet(viewsets.ModelViewSet):
                 'message': 'Invalid email or password.'
             }, status=status.HTTP_401_UNAUTHORIZED)
         
-        return Response({
+        token = TokenUtils.generate_token(user)
+        
+        response = Response({
             'status': 'success',
             'message': 'Login successful',
             'data': {
                 'user': user.serialized,
-                'token': user.serialized.email
+                'token': token
             }
         }, status=status.HTTP_200_OK)
+        
+        response.set_cookie(
+            'auth_token',
+            token,
+            max_age=7*24*60*60,
+            httponly=True,
+            samesite='Lax',
+            secure=False
+        )
+        
+        return response
     
 
     @action(detail=False, methods=['POST'], permission_classes=[AllowAny])
@@ -104,11 +140,27 @@ class UserViewSet(viewsets.ModelViewSet):
                 role=role
             )
             
-            return Response({
+            token = TokenUtils.generate_token(user)
+            
+            response = Response({
                 'status': 'success',
                 'message': 'User created successfully.',
-                'data': user.serialized
+                'data': {
+                    'user': user.serialized,
+                    'token': token
+                }
             }, status=status.HTTP_201_CREATED)
+            
+            response.set_cookie(
+                'auth_token',
+                token,
+                max_age=7*24*60*60,
+                httponly=True,
+                samesite='Lax',
+                secure=False
+            )
+            
+            return response
             
         except Exception as e:
             return Response({

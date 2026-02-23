@@ -1,4 +1,5 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from ride.models import Ride
 from ride.serializers import RideSerializer
@@ -16,12 +17,19 @@ class RideViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         return Response(instance.serialized)
     
-    def get_queryset(self):
-        status = self.request.query_params.get('status', None)
-        email = self.request.query_params.get('email', None)
-        sort_by = self.request.query_params.get('sort', None)
-        lat = self.request.query_params.get('lat', None)
-        lon = self.request.query_params.get('lon', None)
+    def list(self, request, *args, **kwargs):
+        status = request.query_params.get('status', None)
+        email = request.query_params.get('email', None)
+        sort_by = request.query_params.get('sort', None)
+        lat = request.query_params.get('lat', None)
+        lon = request.query_params.get('lon', None)
+        
+        try:
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 20))
+        except (ValueError, TypeError):
+            page = 1
+            page_size = 20
         
         try:
             lat = float(lat) if lat else None
@@ -30,32 +38,45 @@ class RideViewSet(viewsets.ModelViewSet):
             lat = None
             lon = None
         
-        return RideService.get_filtered_and_sorted_rides(
+        result = RideService.get_filtered_and_sorted_rides(
             status=status,
             email=email,
             sort_by=sort_by,
             lat=lat,
-            lon=lon
+            lon=lon,
+            page=page,
+            page_size=page_size
         )
-    
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        is_list_result = isinstance(queryset, list)
         
-        if is_list_result:
-            from rest_framework.pagination import PageNumberPagination
-            paginator = PageNumberPagination()
-            paginator.page_size = 20
-            page = paginator.paginate_queryset(queryset, request)
-            if page is not None:
-                data = [ride.serialized for ride in page]
-                return paginator.get_paginated_response(data)
-            data = [ride.serialized for ride in queryset]
-            return Response(data)
-        else:
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                data = [ride.serialized for ride in page]
-                return self.get_paginated_response(data)
-            data = [ride.serialized for ride in queryset]
-            return Response(data)
+        data = [ride.serialized for ride in result['results']]
+        
+        return Response({
+            'count': result['count'],
+            'page': result['page'],
+            'page_size': result['page_size'],
+            'total_pages': result['total_pages'],
+            'next': f"?page={page + 1}&page_size={page_size}" if page < result['total_pages'] else None,
+            'previous': f"?page={page - 1}&page_size={page_size}" if page > 1 else None,
+            'results': data
+        })
+    
+    @action(detail=False, methods=['GET'], permission_classes=[IsAdminRole])
+    def with_duration(self, request):
+        try:
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 20))
+        except (ValueError, TypeError):
+            page = 1
+            page_size = 20
+        
+        result = RideService.get_rides_with_duration(page=page, page_size=page_size)
+        
+        return Response({
+            'count': result['count'],
+            'page': result['page'],
+            'page_size': result['page_size'],
+            'total_pages': result['total_pages'],
+            'next': f"?page={page + 1}&page_size={page_size}" if page < result['total_pages'] else None,
+            'previous': f"?page={page - 1}&page_size={page_size}" if page > 1 else None,
+            'results': result['results']
+        }, status=status.HTTP_200_OK)

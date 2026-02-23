@@ -1,51 +1,26 @@
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
-from user.models import User
-import base64
+from user.token_utils import TokenUtils
 
 
-class CustomUserAuthentication(BaseAuthentication):
+class CookieTokenAuthentication(BaseAuthentication):
     
     def authenticate(self, request):
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        token = request.COOKIES.get('auth_token')
         
-        if not auth_header.startswith('Basic '):
+        if not token:
+            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            if auth_header.startswith('Token '):
+                token = auth_header.split(' ')[1]
+            else:
+                return None
+        
+        user = TokenUtils.get_user_from_token(token)
+        
+        if not user:
             return None
         
-        try:
-            encoded_credentials = auth_header.split(' ')[1]
-            decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
-            email, password = decoded_credentials.split(':', 1)
-            
-            try:
-                user = User.objects.get(email=email)
-                if not user.check_password(password):
-                    raise AuthenticationFailed('Invalid credentials')
-                return (user, None)
-            except User.DoesNotExist:
-                raise AuthenticationFailed('Invalid credentials')
-                
-        except (ValueError, IndexError, UnicodeDecodeError):
-            raise AuthenticationFailed('Invalid authentication header format')
-    
-    def authenticate_header(self, request):
-        return 'Basic realm="api"'
-
-
-class TokenAuthentication(BaseAuthentication):
-    
-    def authenticate(self, request):
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        
-        if not auth_header.startswith('Token '):
-            return None
-        
-        try:
-            token = auth_header.split(' ')[1]
-            user = User.objects.get(email=token)
-            return (user, None)
-        except (User.DoesNotExist, IndexError):
-            return None
+        return (user, None)
     
     def authenticate_header(self, request):
         return 'Token'

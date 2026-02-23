@@ -124,8 +124,7 @@ STATIC_URL = 'static/'
 # Django REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'user.authentication.TokenAuthentication',
-        'user.authentication.CustomUserAuthentication',
+        'user.authentication.CookieTokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'user.permissions.IsAdminRole',

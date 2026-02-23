@@ -1,5 +1,4 @@
 from typing import List, Optional
-from django.db import connection
 from django.db.models import QuerySet
 from user.models import User
 
@@ -11,41 +10,38 @@ class UserService:
         return User.objects.all()
     
     @staticmethod
+    def get_all_users(page: int = 1, page_size: int = 20) -> dict:
+        offset = (page - 1) * page_size
+        queryset = User.objects.all().order_by('-id_user')
+        
+        total_count = queryset.count()
+        users = list(queryset[offset:offset + page_size])
+        
+        return {
+            'results': users,
+            'count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        }
+    
+    @staticmethod
     def get_user_by_email(email: str) -> Optional[User]:
-        query = "SELECT id_user FROM user WHERE email = %s LIMIT 1"
-        with connection.cursor() as cursor:
-            cursor.execute(query, [email])
-            row = cursor.fetchone()
-            if row:
-                user_id = row[0]
-                return User.objects.get(id_user=user_id)
+        try:
+            return User.objects.filter(email=email).first()
+        except User.DoesNotExist:
             return None
     
     @staticmethod
     def check_email_exists(email: str) -> bool:
-        query = "SELECT COUNT(*) FROM user WHERE email = %s"
-        with connection.cursor() as cursor:
-            cursor.execute(query, [email])
-            count = cursor.fetchone()[0]
-            return count > 0
+        return User.objects.filter(email=email).exists()
     
     @staticmethod
     def get_users_by_role(role: str = None) -> List[User]:
+        queryset = User.objects.all()
         if role:
-            query = "SELECT id_user FROM user WHERE role = %s"
-            params = [role]
-        else:
-            query = "SELECT id_user FROM user"
-            params = []
-        
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
-            user_ids = [row[0] for row in cursor.fetchall()]
-            
-            if not user_ids:
-                return []
-            
-            return list(User.objects.filter(id_user__in=user_ids))
+            queryset = queryset.filter(role=role)
+        return list(queryset)
     
     @staticmethod
     def create_user(email: str, password: str, first_name: str, last_name: str, 
@@ -59,21 +55,5 @@ class UserService:
             role=role
         )
         user.set_password(password)
-        
-        query = """
-            INSERT INTO user (email, password, first_name, last_name, phone_number, role)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        
-        with connection.cursor() as cursor:
-            cursor.execute(query, [
-                user.email,
-                user.password,
-                user.first_name,
-                user.last_name,
-                user.phone_number,
-                user.role
-            ])
-            user_id = cursor.lastrowid
-        
-        return User.objects.get(id_user=user_id)
+        user.save()
+        return user
