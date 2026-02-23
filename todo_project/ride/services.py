@@ -1,7 +1,7 @@
 from typing import Union, List
 from django.db.models import QuerySet, Prefetch
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime
 from ride.models import Ride
 from ride_event.models import RideEvent
 from ride.utils import haversine_distance
@@ -10,7 +10,47 @@ from ride.utils import haversine_distance
 class RideService:
     
     @staticmethod
-    def _build_queryset(status: str = None, email: str = None, sort_by: str = None) -> QuerySet:
+    def _parse_datetime_string(datetime_str: str):
+        """Parse various datetime string formats."""
+        if not datetime_str:
+            return None
+        
+        # Try multiple datetime formats
+        formats = [
+            '%Y-%m-%d %H:%M:%S.%f',  # 2026-02-16 01:00:24.300705
+            '%Y-%m-%d %H:%M:%S',     # 2026-02-16 01:00:24
+            '%Y-%m-%dT%H:%M:%S.%f',  # 2026-02-16T01:00:24.300705
+            '%Y-%m-%dT%H:%M:%S',     # 2026-02-16T01:00:24
+            '%Y-%m-%d',              # 2026-02-16
+        ]
+        
+        for fmt in formats:
+            try:
+                dt = datetime.strptime(datetime_str, fmt)
+                # Make timezone-aware
+                dt = timezone.make_aware(dt)
+                return dt
+            except ValueError:
+                continue
+        
+        return None
+    
+    @staticmethod
+    def _parse_order(order: str) -> bool:
+        """Parse order parameter. Returns True for descending, False for ascending."""
+        if not order:
+            return True  # Default to descending
+        
+        order_lower = order.lower()
+        if order_lower in ['desc', 'descending', 'desc', 'd']:
+            return True
+        elif order_lower in ['asc', 'ascending', 'asc', 'a']:
+            return False
+        else:
+            return True  # Default to descending if invalid
+    
+    @staticmethod
+    def _build_queryset(status: str = None, email: str = None, sort_by: str = None, order: str = 'desc') -> QuerySet:
         yesterday = timezone.now() - timedelta(hours=24)
         todays_events_prefetch = Prefetch(
             'rideevent_set',
@@ -25,10 +65,22 @@ class RideService:
         if email:
             queryset = queryset.filter(id_rider__email__icontains=email)
         
-        if sort_by == 'pickup_time':
-            queryset = queryset.order_by('pickup_time')
-        elif sort_by == '-pickup_time':
-            queryset = queryset.order_by('-pickup_time')
+        is_descending = RideService._parse_order(order)
+        
+        # Check if sort_by is a datetime string
+        datetime_parse_result = RideService._parse_datetime_string(sort_by) if sort_by else None
+        
+        if datetime_parse_result:
+            # Sort by pickup_time (datetime provided indicates pickup_time sorting)
+            if is_descending:
+                queryset = queryset.order_by('-pickup_time')
+            else:
+                queryset = queryset.order_by('pickup_time')
+        elif sort_by == 'pickup_time':
+            if is_descending:
+                queryset = queryset.order_by('-pickup_time')
+            else:
+                queryset = queryset.order_by('pickup_time')
         else:
             queryset = queryset.order_by('-pickup_time')
         
@@ -55,15 +107,17 @@ class RideService:
     
     @classmethod
     def get_filtered_and_sorted_rides(cls, status: str = None, email: str = None, 
-                                      sort_by: str = None, lat: float = None, lon: float = None,
+                                      sort_by: str = None, order: str = 'desc', lat: float = None, lon: float = None,
                                       page: int = 1, page_size: int = 10) -> dict:
         offset = (page - 1) * page_size
         
-        queryset = cls._build_queryset(status=status, email=email, sort_by=sort_by)
+        is_descending = cls._parse_order(order)
         
-        if sort_by in ['distance', '-distance'] and lat is not None and lon is not None:
+        queryset = cls._build_queryset(status=status, email=email, sort_by=sort_by, order=order)
+        
+        if sort_by == 'distance' and lat is not None and lon is not None:
             all_rides = list(queryset)
-            sorted_rides = cls._sort_by_distance(all_rides, lat, lon, reverse=(sort_by == '-distance'))
+            sorted_rides = cls._sort_by_distance(all_rides, lat, lon, reverse=is_descending)
             total_count = len(sorted_rides)
             paginated_rides = sorted_rides[offset:offset + page_size]
             return {

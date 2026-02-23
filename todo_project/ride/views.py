@@ -21,6 +21,7 @@ class RideViewSet(viewsets.ModelViewSet):
         status = request.query_params.get('status', None)
         email = request.query_params.get('email', None)
         sort_by = request.query_params.get('sort', None)
+        order = request.query_params.get('order', 'desc')  # Default to descending
         lat = request.query_params.get('lat', None)
         lon = request.query_params.get('lon', None)
         
@@ -42,6 +43,7 @@ class RideViewSet(viewsets.ModelViewSet):
             status=status,
             email=email,
             sort_by=sort_by,
+            order=order,
             lat=lat,
             lon=lon,
             page=page,
