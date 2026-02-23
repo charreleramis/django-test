@@ -1,5 +1,7 @@
 from typing import Union, List
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Prefetch
+from django.utils import timezone
+from datetime import timedelta
 from ride.models import Ride
 from ride_event.models import RideEvent
 from ride.utils import haversine_distance
@@ -9,7 +11,13 @@ class RideService:
     
     @staticmethod
     def _build_queryset(status: str = None, email: str = None, sort_by: str = None) -> QuerySet:
-        queryset = Ride.objects.select_related('id_rider', 'id_driver').prefetch_related('rideevent_set').all()
+        yesterday = timezone.now() - timedelta(hours=24)
+        todays_events_prefetch = Prefetch(
+            'rideevent_set',
+            queryset=RideEvent.objects.filter(created_at__gte=yesterday).order_by('created_at'),
+            to_attr='todays_events'
+        )
+        queryset = Ride.objects.select_related('id_rider', 'id_driver').prefetch_related(todays_events_prefetch).all()
         
         if status:
             queryset = queryset.filter(status=status)
@@ -37,12 +45,18 @@ class RideService:
     
     @classmethod
     def get_base_queryset(cls) -> QuerySet:
-        return Ride.objects.select_related('id_rider', 'id_driver').prefetch_related('rideevent_set').all()
+        yesterday = timezone.now() - timedelta(hours=24)
+        todays_events_prefetch = Prefetch(
+            'rideevent_set',
+            queryset=RideEvent.objects.filter(created_at__gte=yesterday).order_by('created_at'),
+            to_attr='todays_events'
+        )
+        return Ride.objects.select_related('id_rider', 'id_driver').prefetch_related(todays_events_prefetch).all()
     
     @classmethod
     def get_filtered_and_sorted_rides(cls, status: str = None, email: str = None, 
                                       sort_by: str = None, lat: float = None, lon: float = None,
-                                      page: int = 1, page_size: int = 20) -> dict:
+                                      page: int = 1, page_size: int = 10) -> dict:
         offset = (page - 1) * page_size
         
         queryset = cls._build_queryset(status=status, email=email, sort_by=sort_by)
@@ -72,10 +86,16 @@ class RideService:
         }
     
     @staticmethod
-    def get_rides_with_duration(page: int = 1, page_size: int = 20) -> dict:
+    def get_rides_with_duration(page: int = 1, page_size: int = 10) -> dict:
         offset = (page - 1) * page_size
         
-        queryset = Ride.objects.select_related('id_rider', 'id_driver').prefetch_related('rideevent_set').all().order_by('-pickup_time')
+        yesterday = timezone.now() - timedelta(hours=24)
+        todays_events_prefetch = Prefetch(
+            'rideevent_set',
+            queryset=RideEvent.objects.filter(created_at__gte=yesterday).order_by('created_at'),
+            to_attr='todays_events'
+        )
+        queryset = Ride.objects.select_related('id_rider', 'id_driver').prefetch_related(todays_events_prefetch).all().order_by('-pickup_time')
         total_count = queryset.count()
         
         rides = list(queryset[offset:offset + page_size])

@@ -10,7 +10,7 @@ class UserService:
         return User.objects.all()
     
     @staticmethod
-    def get_all_users(page: int = 1, page_size: int = 20) -> dict:
+    def get_all_users(page: int = 1, page_size: int = 10) -> dict:
         offset = (page - 1) * page_size
         queryset = User.objects.all().order_by('-id_user')
         

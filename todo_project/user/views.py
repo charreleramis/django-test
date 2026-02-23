@@ -18,10 +18,10 @@ class UserViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         try:
             page = int(request.query_params.get('page', 1))
-            page_size = int(request.query_params.get('page_size', 20))
+            page_size = int(request.query_params.get('page_size', 10))
         except (ValueError, TypeError):
             page = 1
-            page_size = 20
+            page_size = 10
         
         result = UserService.get_all_users(page=page, page_size=page_size)
         
