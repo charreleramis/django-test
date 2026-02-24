@@ -134,7 +134,13 @@ All API endpoints are prefixed with `/api/`
   - `page_size` - Items per page (default: 10)
   - `status` - Filter by ride status (`en-route`, `pickup`, `dropoff`, `completed`, `cancelled`)
   - `email` - Filter by rider email (partial match)
-  - `sort` - Sort by `pickup_time`, `-pickup_time`, `distance`, or `-distance`
+  - `sort` - Sort by pickup_time (use datetime string) or distance
+    - For pickup_time: Use a datetime string (e.g., `2026-02-16 01:00:24.300705` or `2026-02-16T01:00:24`)
+      - Supported formats: `YYYY-MM-DD HH:MM:SS.ffffff`, `YYYY-MM-DD HH:MM:SS`, `YYYY-MM-DDTHH:MM:SS.ffffff`, `YYYY-MM-DDTHH:MM:SS`, `YYYY-MM-DD`
+    - For distance: Use `distance` (requires `lat` and `lon` parameters)
+  - `order` - Sort order: `asc` or `desc` (default: `desc`)
+    - Use `asc` for ascending order, `desc` for descending order
+    - Applies to both pickup_time and distance sorting
   - `lat` - Latitude for distance sorting (required with `sort=distance`)
   - `lon` - Longitude for distance sorting (required with `sort=distance`)
 
@@ -149,17 +155,20 @@ GET /api/rides/?status=completed
 # Filter by rider email
 GET /api/rides/?email=user@example.com
 
-# Sort by pickup time (ascending)
-GET /api/rides/?sort=pickup_time
+# Sort by pickup time (ascending) - using datetime string
+GET /api/rides/?sort=2026-02-16 01:00:24.300705&order=asc
 
-# Sort by pickup time (descending)
-GET /api/rides/?sort=-pickup_time
+# Sort by pickup time (ascending) - ISO format
+GET /api/rides/?sort=2026-02-16T01:00:24&order=asc
 
-# Sort by distance from GPS coordinates
-GET /api/rides/?sort=distance&lat=40.7128&lon=-74.0060
+# Sort by pickup time (descending) - default order
+GET /api/rides/?sort=2026-02-16 01:00:24.300705&order=desc
 
-# Sort by distance (descending)
-GET /api/rides/?sort=-distance&lat=40.7128&lon=-74.0060
+# Sort by distance from GPS coordinates (ascending - closest first)
+GET /api/rides/?sort=distance&lat=40.7128&lon=-74.0060&order=asc
+
+# Sort by distance (descending - farthest first)
+GET /api/rides/?sort=distance&lat=40.7128&lon=-74.0060&order=desc
 ```
 
 **Response includes:**
