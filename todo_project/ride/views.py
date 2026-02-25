@@ -4,12 +4,14 @@ from rest_framework.response import Response
 from ride.models import Ride
 from ride.serializers import RideSerializer
 from ride.services import RideService
+from user.authentication import CookieOnlyAdminAuthentication
 from user.permissions import IsAdminRole
 
 
 class RideViewSet(viewsets.ModelViewSet):
     queryset = RideService.get_base_queryset()
     serializer_class = RideSerializer
+    authentication_classes = [CookieOnlyAdminAuthentication]
     permission_classes = [IsAdminRole]
     lookup_field = 'id_ride'
     
@@ -18,6 +20,7 @@ class RideViewSet(viewsets.ModelViewSet):
         return Response(instance.serialized)
     
     def list(self, request, *args, **kwargs):
+        
         status = request.query_params.get('status', None)
         email = request.query_params.get('email', None)
         sort_by = request.query_params.get('sort', None)

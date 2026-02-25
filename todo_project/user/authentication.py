@@ -50,3 +50,28 @@ class RequireCookieTokenAuthentication(BaseAuthentication):
 
     def authenticate_header(self, request):
         return 'Token'
+
+
+class CookieOnlyAdminAuthentication(BaseAuthentication):
+    """
+    Auth for protected APIs using the Cookie header. Expects header: Cookie: <token>.
+    No Cookie header or invalid token → 401.
+    """
+
+    def authenticate(self, request):
+        token = request.META.get('HTTP_COOKIE', '').strip()
+
+        if not token:
+            raise AuthenticationFailed(
+                'Authentication required. Send the token in the Cookie header (e.g. Cookie: <token>).'
+            )
+
+        user = TokenUtils.get_user_from_token(token)
+
+        if not user:
+            raise AuthenticationFailed('Invalid or expired token.')
+
+        return (user, None)
+
+    def authenticate_header(self, request):
+        return 'Cookie'

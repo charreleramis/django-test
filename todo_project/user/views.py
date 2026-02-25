@@ -64,7 +64,7 @@ class UserViewSet(viewsets.ModelViewSet):
         
         token = TokenUtils.generate_token(user)
         
-        response = Response({
+        return Response({
             'status': 'success',
             'message': 'Login successful',
             'data': {
@@ -72,17 +72,6 @@ class UserViewSet(viewsets.ModelViewSet):
                 'token': token
             }
         }, status=status.HTTP_200_OK)
-        
-        response.set_cookie(
-            'auth_token',
-            token,
-            max_age=7*24*60*60,
-            httponly=True,
-            samesite='Lax',
-            secure=False
-        )
-        
-        return response
     
 
     @action(detail=False, methods=['POST'], permission_classes=[AllowAny])
@@ -142,7 +131,7 @@ class UserViewSet(viewsets.ModelViewSet):
             
             token = TokenUtils.generate_token(user)
             
-            response = Response({
+            return Response({
                 'status': 'success',
                 'message': 'User created successfully.',
                 'data': {
@@ -150,17 +139,6 @@ class UserViewSet(viewsets.ModelViewSet):
                     'token': token
                 }
             }, status=status.HTTP_201_CREATED)
-            
-            response.set_cookie(
-                'auth_token',
-                token,
-                max_age=7*24*60*60,
-                httponly=True,
-                samesite='Lax',
-                secure=False
-            )
-            
-            return response
             
         except Exception as e:
             return Response({
